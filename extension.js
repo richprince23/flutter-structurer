@@ -20,19 +20,25 @@ function activate(context) {
             uri = uri[0];
         }
 
-        // Prompt user for feature name
-        const featureName = await vscode.window.showInputBox({
-            prompt: 'Enter the name of the Feature/Module'
+        // Prompt user for feature names
+        const featureNamesInput = await vscode.window.showInputBox({
+            prompt: 'Enter the name(s) of the Feature(s) - (comma-separated for multiple)'
         });
 
-        if (!featureName) {
-            vscode.window.showErrorMessage('No feature name provided!');
+        if (!featureNamesInput) {
+            vscode.window.showErrorMessage('No feature name(s) provided!');
+            return;
+        }
+
+        const featureNames = featureNamesInput.split(',').map(name => name.trim()).filter(name => name !== '');
+
+        if (featureNames.length === 0) {
+            vscode.window.showErrorMessage('No valid feature name(s) provided!');
             return;
         }
 
         const projectPath = uri.fsPath;
         const libFolderPath = path.join(projectPath, 'lib');
-        const featureFolderPath = path.join(libFolderPath, featureName);
         const foldersToCreate = ['data', 'models', 'widgets', 'pages', 'providers', 'services'];
 
         // Check if 'lib' folder exists, if not, create it
@@ -40,21 +46,27 @@ function activate(context) {
             fs.mkdirSync(libFolderPath);
         }
 
-        // Check if the feature folder exists, if not, create it
-        if (!fs.existsSync(featureFolderPath)) {
-            fs.mkdirSync(featureFolderPath);
+        for (const featureName of featureNames) {
+            const featureFolderPath = path.join(libFolderPath, featureName);
+
+            // Check if the feature folder exists, if not, create it
+            if (!fs.existsSync(featureFolderPath)) {
+                fs.mkdirSync(featureFolderPath);
+            }
+
+            // Create the subfolders inside the feature folder
+            foldersToCreate.forEach(folder => {
+                const folderToCreate = path.join(featureFolderPath, folder);
+                if (!fs.existsSync(folderToCreate)) {
+                    fs.mkdirSync(folderToCreate);
+                    vscode.window.showInformationMessage(`Created: ${path.relative(projectPath, folderToCreate)}`);
+                }
+            });
+
+            vscode.window.showInformationMessage(`Flutter feature "${featureName}" created successfully!`);
         }
 
-        // Create the subfolders inside the feature folder
-        foldersToCreate.forEach(folder => {
-            const folderToCreate = path.join(featureFolderPath, folder);
-            if (!fs.existsSync(folderToCreate)) {
-                fs.mkdirSync(folderToCreate);
-                vscode.window.showInformationMessage(`Created: ${path.relative(projectPath, folderToCreate)}`);
-            }
-        });
-
-        vscode.window.showInformationMessage(`Flutter feature "${featureName}" created successfully!`);
+        vscode.window.showInformationMessage(`All requested Flutter features have been created!`);
     });
 
     context.subscriptions.push(disposable);
